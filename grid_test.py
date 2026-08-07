@@ -9,7 +9,7 @@ N, S, E, W = 1, 2, 4, 8
 
 OPPOSITE = {N: S, S: N, E: W, W: E}
 
-DELTA = {N: (0, -1), S: (0, 1), E: (-1, 0), W: (1, 0)}
+DELTA = {N: (0, -1), S: (0, 1), E: (1, 0), W: (-1, 0)}
 
         ## (X,Y) 
 
@@ -17,7 +17,7 @@ DELTA = {N: (0, -1), S: (0, 1), E: (-1, 0), W: (1, 0)}
 DIRECTIONS = [N, S, E, W]
 
 AXE_Y = 10
-AXE_X = 10
+AXE_X = 20
 TOTAL = AXE_Y + AXE_X
 
 
@@ -58,40 +58,52 @@ def the_architect(grid: list[list[Dictype]]) -> None:
     ## A la fin du wild on declenche un animation pour signer que le maze est pret
     ## Ou un text like "Letgo"
 
+    ## safe_d = []
+    ## sd.append(d)
+    ## if d in sd  choose an other directions
+    ## sd.pop(-1)
+    ## pour eviter de choisir 2 fois de suite la meme direction 
+
 
 def can_you_see_me(grid: list[list[Dictype]]) -> None:
 
-    line = "*"
-    for col in grid[0]:
-        line += "-"
-    line += "*" 
+    line = ""
+
+    for cell in grid[0]:
+        line += "+"
+        if cell["wall"] & N:
+            line += "-"
+        else:
+            line += " "
+    line += "+" 
     print(f"{line}")
 
     for row in grid:
-        line = ""
-        for cell in row:
-            if cell["wall"] & S:
-                line += "-"
-            else:
-                line += " "
-        print(f"{line}\n")
+        floor = ""
         for cell in row:
             if cell["wall"] & W:
-                line += "|"
-            if cell["wall"] & E:
-                line += "|"
+                floor += "|"
             else:
-                line += " "
-        print(f"{line}")
+                floor += " "
+            floor += " "
+        if row[-1]["wall"] & E:
+            floor += "|" 
+        else:
+            floor += " "
+        print(f"{floor}")
+
+        wall = "" 
+        for cell in row:
+            wall += "+"
+            if cell["wall"] & S:
+                wall += "-"
+            else:
+                wall += " "
+        wall += "+"
+        print(f"{wall}")
 
 
-
-
-
-
-    
-
-
+## A reecrir avec line += "+" if ... else " "
 
 
 def generate_grid() -> list[list[Dictype]]:
