@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-from typing import TypedDict
+from typing import TypedDict 
 import random
+import sys
+import time
+from collections import deque
+from collections.abc import Iterator
 
 
 ## 1 = 0001, 2 = 0010, 4 = 0100, 8 = 1000 15 = 1111 (Tous ferme)
@@ -16,8 +20,8 @@ DELTA = {N: (0, -1), S: (0, 1), E: (1, 0), W: (-1, 0)}
 
 DIRECTIONS = [N, S, E, W]
 
-AXE_Y = 30
-AXE_X = 45
+AXE_Y = 20
+AXE_X = 35
 TOTAL = AXE_Y + AXE_X
 
 PATTERN_42 = [
@@ -28,12 +32,16 @@ PATTERN_42 = [
     [0, 0, 1, 0, 1, 1, 1]
 ]
 
+ENTRY: tuple[int,int] = (0,0)
+EXIT: tuple[int,int] = (AXE_Y-2, AXE_X-2)
+
 
 class Dictype(TypedDict):
     wall: int
     visited: bool
     color: list[int]
     logo: bool
+    path: bool
 
 
 
@@ -87,6 +95,7 @@ def i_m_logo(grid) -> None:
     
     scale: int = scale_logo()
     if scale == 0:
+        print("The '42' pattern cannot be display size of grid to small.")
         return None
     center_row = AXE_Y//2
     center_col = AXE_X//2
@@ -116,11 +125,47 @@ def i_m_logo(grid) -> None:
         '''
 
 
+def you_cannot_hide(grid: list[list[Dictype]]) -> dict:
+
+   
+    path: dict = {ENTRY: None}
+    next_move = deque([ENTRY])
+
+    while True:
+        y,x = next_move.popleft()
+        if (y,x) == EXIT:
+            break
+        for d in DIRECTIONS:
+            if not grid[y][x]["wall"] & d:
+                nx = x + DELTA[d][0]
+                ny = y + DELTA[d][1]
+                if (ny, nx) not in path:
+                    path[(ny,nx)] = (y, x)
+                    next_move.append((ny,nx))
+    return path
 
 
 
+def solved(path:dict, grid: list[list[Dictype]]) -> Iterator[None]:
+    
+    '''acceder a exit key, recup ses valeurs les utiliser sur grid, changer les variables,
+        utiliser cest nouvelle valeur comme key pour recup les nouvelles coord etc until None
 
-def the_architect(grid: list[list[Dictype]], imparfect: bool) -> None:
+    '''
+
+    curr = EXIT
+
+    while curr != None:
+        y,x = curr
+        grid[y][x]["path"] = True
+        grid[y][x]["color"] = [20,20,20]
+        yield
+        curr = path[curr]
+    
+
+
+
+def the_architect(grid: list[list[Dictype]]) -> None:
 
     tries = 4
     grid[0][0]["visited"] = True
@@ -146,23 +191,30 @@ def the_architect(grid: list[list[Dictype]], imparfect: bool) -> None:
             stack.pop(-1)
             tries = 4
 
-    # if imparfect:
-    #     for row in range(AXE_Y):
-    #         for col in range(AXE_X):
-    #             if grid[row][col]["wall"].bit_count() == 3:
-                        
+
+def imperfection(grid) -> None:
 
 
-  
-    ## A la fin du wild on declenche un animation pour signer que le maze est pret
-    ## Ou un text like "Letgo"
+    '''On doit parcourir chaque case et test tous les directions pour trouver les murs fermer
+        stockr les dir vvalide dans une liste et les mur ouvert
 
-    ## safe_d = []
-    ## sd.append(d)
-    ## if d in sd  choose an other directions
-    ## sd.pop(-1)
-    ## pour eviter de choisir 2 fois de suite la meme direction 
+    '''
+    close_wall: list = []
 
+    for y in range(1, AXE_Y-1):
+        for x in range(1, AXE_X-1):
+            if grid[y][x]["wall"].bit_count() == 3:
+                close_wall = [d for d in DIRECTIONS if grid[y][x]["wall"] & d]
+                d = random.choice(close_wall)
+                nx = x + DELTA[d][0]
+                ny = y + DELTA[d][1]
+                if grid[ny][nx]["logo"] is not True:
+                    grid[y][x]["wall"] &= ~d
+                    grid[ny][nx]["wall"] &= ~OPPOSITE[d] 
+    
+
+
+    pass
 
 def can_you_see_me(grid: list[list[Dictype]]) -> None:
 
@@ -171,7 +223,7 @@ def can_you_see_me(grid: list[list[Dictype]]) -> None:
     for cell in grid[0]:
         line += "+"
         if cell["wall"] & N:
-            line += "-"
+            line += "█"
         else:
             line += " "
     line += "+" 
@@ -183,12 +235,15 @@ def can_you_see_me(grid: list[list[Dictype]]) -> None:
             if cell["logo"] == True:
                 floor += "#"
             elif cell["wall"] & W:
-                floor += "|"
+                floor += "█"
             else:
                 floor += " "
-            floor += " "
+            if cell["path"] == True:
+                floor += "."
+            else:
+                floor += " "
         if row[-1]["wall"] & E:
-            floor += "|" 
+            floor += "█" 
         else:
             floor += " "
         print(f"{floor}")
@@ -199,7 +254,7 @@ def can_you_see_me(grid: list[list[Dictype]]) -> None:
             if cell["logo"] == True:
                 wall += "#"
             elif cell["wall"] & S:
-                wall += "-"
+                wall += "█"
             else:
                 wall += " "
         wall += "+"
@@ -211,28 +266,38 @@ def can_you_see_me(grid: list[list[Dictype]]) -> None:
 
 def generate_grid() -> list[list[Dictype]]:
 
-    # if TOTAL <= 3:
-    #     raise
+    if TOTAL < 9:
+        print("Error size to small")
 
     grid: list[list[Dictype]] = [[
-        {"wall": 15, "visited": False, "color": [0,0,0], "logo": False} for _ in range(AXE_X)] 
+        {"wall": 15, 
+         "visited": False, 
+         "color": [0,0,0], 
+         "logo": False, 
+         "path": False} for _ in range(AXE_X)] 
             for _ in range(AXE_Y)]
     return grid
 
 
 
+def render_grid(grid) -> None:
 
+    pass
 
 
 
 
 def main() -> None:
     
+    imperect = False
+
     grid = generate_grid()
     i_m_logo(grid)
-    imparfect = False
-    the_architect(grid, imparfect)
+    the_architect(grid)
+    if imperect is True:
+        imperfection(grid)
     can_you_see_me(grid)
+
     while True:
         print("=== A-Maze-ing ===")
         print("1. Re-generate a new maze")
@@ -243,9 +308,18 @@ def main() -> None:
         match user_input:
             case 1:
                 grid = generate_grid()
-                the_architect(grid, imparfect)
+                i_m_logo(grid)
+                the_architect(grid)
+                if imperect is True:
+                    imperfection(grid)
+                can_you_see_me(grid)
             case 2:
-                pass
+                path = you_cannot_hide(grid)
+                for _ in solved(path, grid):
+                    print(f"\033[{2*AXE_Y+1}A", end="")
+                    can_you_see_me(grid)
+                    sys.stdout.flush()
+                    time.sleep(0.05)
             case 3:
                 pass
             case 4:
