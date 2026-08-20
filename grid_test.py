@@ -36,12 +36,52 @@ ENTRY: tuple[int,int] = (0,0)
 EXIT: tuple[int,int] = (AXE_Y-2, AXE_X-2)
 
 
+
+
+
 class Dictype(TypedDict):
     wall: int
     visited: bool
     color: list[int]
     logo: bool
     path: bool
+
+RESET = "\033[0m"
+
+THEME_ROUGE = {
+    "wall":  "\033[38;2;178;34;34m",    # firebrick, rouge profond
+    "logo":  "\033[38;2;255;140;0m",    # orange doré, contraste chaud
+    "path":  "\033[38;2;255;99;71m",    # tomato, corail clair
+    "entry": "\033[38;2;50;205;50m",    # vert lime
+    "exit":  "\033[38;2;255;0;0m",      # rouge vif, se détache du mur plus sombre
+}
+
+THEME_VERT = {
+    "wall":  "\033[38;2;34;139;34m",    # forest green
+    "logo":  "\033[38;2;255;215;0m",    # or
+    "path":  "\033[38;2;144;238;144m",  # vert clair
+    "entry": "\033[38;2;0;255;127m",    # spring green
+    "exit":  "\033[38;2;220;20;60m",    # crimson
+}
+
+THEME_BLEU = {
+    "wall":  "\033[38;2;70;130;180m",   # steel blue
+    "logo":  "\033[38;2;255;215;0m",    # or
+    "path":  "\033[38;2;135;206;235m",  # sky blue
+    "entry": "\033[38;2;50;205;50m",    # vert lime
+    "exit":  "\033[38;2;255;69;0m",     # rouge-orangé
+}
+
+THEME_JAUNE = {
+    "wall":  "\033[38;2;218;165;32m",   # goldenrod
+    "logo":  "\033[38;2;184;134;11m",   # or foncé, contraste sur fond clair
+    "path":  "\033[38;2;255;255;224m",  # jaune pâle
+    "entry": "\033[38;2;50;205;50m",    # vert lime
+    "exit":  "\033[38;2;220;20;60m",    # crimson
+}
+
+THEMES = [THEME_ROUGE, THEME_VERT, THEME_BLEU, THEME_JAUNE]
+
 
 
 
@@ -216,52 +256,96 @@ def imperfection(grid) -> None:
 
     pass
 
-def can_you_see_me(grid: list[list[Dictype]]) -> None:
+def can_you_see_me(grid: list[list[Dictype]], corners: list[list[bool]], theme: dict) -> None:
 
     line = ""
-
-    for cell in grid[0]:
-        line += "+"
+    for c, cell in enumerate(grid[0]):
+        line += colors("█", theme["wall"]) if corners[0][c] else " "
         if cell["wall"] & N:
-            line += "█"
+            line += colors("█", theme["wall"])
         else:
             line += " "
-    line += "+" 
+    line += colors("█", theme["wall"]) if corners[0][AXE_X] else " "
     print(f"{line}")
 
-    for row in grid:
+    for row_idx, row in enumerate(grid):
         floor = ""
-        for cell in row:
-            if cell["logo"] == True:
-                floor += "#"
+        for c, cell in enumerate(row):
+            if (row_idx, c) == ENTRY:
+                floor += colors("X", theme["entry"])
+            elif (row_idx, c) == EXIT:
+                floor += colors("X", theme["exit"])
+            elif cell["logo"] == True:
+                floor += colors("█", theme["logo"])
             elif cell["wall"] & W:
-                floor += "█"
+                floor += colors("█", theme["wall"])
             else:
                 floor += " "
             if cell["path"] == True:
-                floor += "."
+                floor += colors("█", theme["path"])
             else:
                 floor += " "
         if row[-1]["wall"] & E:
-            floor += "█" 
+            floor += colors("█", theme["wall"])
         else:
             floor += " "
         print(f"{floor}")
 
-        wall = "" 
-        for cell in row:
-            wall += "+"
+        r = row_idx + 1
+        wall = ""
+        for c, cell in enumerate(row):
+            wall += colors("█", theme["wall"]) if corners[r][c] else " "
             if cell["logo"] == True:
-                wall += "#"
+                wall += colors("█", theme["logo"])
             elif cell["wall"] & S:
-                wall += "█"
+                wall += colors("█", theme["wall"])
             else:
                 wall += " "
-        wall += "+"
+        wall += colors("█", theme["wall"]) if corners[r][AXE_X] else " "
         print(f"{wall}")
 
 
-## A reecrir avec line += "+" if ... else " "
+def render_corner(grid: list[list[Dictype]]) -> list[list[bool]]:
+
+
+    corners: list[list[bool]] = []
+
+    for r in range(AXE_Y + 1):
+        row: list[bool] = []
+        for c in range(AXE_X + 1):
+
+            haut = False
+            if r > 0:
+                if c < AXE_X:
+                    haut = bool(grid[r-1][c]["wall"] & W)
+                else:
+                    haut = bool(grid[r-1][AXE_X-1]["wall"] & E)
+
+            bas = False
+            if r < AXE_Y:
+                if c < AXE_X:
+                    bas = bool(grid[r][c]["wall"] & W)
+                else:
+                    bas = bool(grid[r][AXE_X-1]["wall"] & E)
+
+            gauche = False
+            if c > 0:
+                if r < AXE_Y:
+                    gauche = bool(grid[r][c-1]["wall"] & N)
+                else:
+                    gauche = bool(grid[AXE_Y-1][c-1]["wall"] & S)
+
+            droite = False
+            if c < AXE_X:
+                if r < AXE_Y:
+                    droite = bool(grid[r][c]["wall"] & N)
+                else:
+                    droite = bool(grid[AXE_Y-1][c]["wall"] & S)
+
+            row.append(haut or bas or gauche or droite)
+        corners.append(row)
+
+    return corners
 
 
 def generate_grid() -> list[list[Dictype]]:
@@ -280,15 +364,16 @@ def generate_grid() -> list[list[Dictype]]:
 
 
 
-def render_grid(grid) -> None:
-
-    pass
-
+def colors(txt: str, color: str) -> str:
+    return f"{color}{txt}{RESET}"
 
 
 
 def main() -> None:
     
+    curr_tidx = 0
+    theme = THEMES[curr_tidx]
+
     imperect = False
 
     grid = generate_grid()
@@ -296,7 +381,8 @@ def main() -> None:
     the_architect(grid)
     if imperect is True:
         imperfection(grid)
-    can_you_see_me(grid)
+    corners = render_corner(grid)
+    can_you_see_me(grid, corners, theme)
 
     while True:
         print("=== A-Maze-ing ===")
@@ -312,16 +398,19 @@ def main() -> None:
                 the_architect(grid)
                 if imperect is True:
                     imperfection(grid)
-                can_you_see_me(grid)
+                    corners = render_corner(grid)
+                can_you_see_me(grid, corners, theme)
             case 2:
                 path = you_cannot_hide(grid)
                 for _ in solved(path, grid):
                     print(f"\033[{2*AXE_Y+1}A", end="")
-                    can_you_see_me(grid)
+                    can_you_see_me(grid, corners, theme)
                     sys.stdout.flush()
                     time.sleep(0.05)
             case 3:
-                pass
+                curr_tidx = (curr_tidx + 1) % len(THEMES)
+                theme = THEMES[curr_tidx]
+                can_you_see_me(grid, corners, theme)
             case 4:
                 break
             case _:

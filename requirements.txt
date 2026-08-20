@@ -1,0 +1,5 @@
+# Development tools only: the project itself runs on the standard
+# library alone, with no third-party runtime dependency.
+flake8>=7.0
+mypy>=1.9
+build>=1.0
