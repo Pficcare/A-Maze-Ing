@@ -1,4 +1,5 @@
 # A-Maze-ing: default configuration file
+
 # One KEY=VALUE pair per line. Blank lines and lines starting
 # with '#' are ignored.
 

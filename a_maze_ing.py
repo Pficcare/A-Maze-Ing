@@ -19,6 +19,28 @@ ANIMATION_DELAY = 0.05
 
 RESET = "\033[0m"
 
+# Alternate screen buffer, the one `vim` and `less` draw into. Entering
+# it hands over a blank screen; leaving it puts the previous content
+# back untouched, so an animation never pollutes the scrollback.
+ALT_SCREEN_ON = "\033[?1049h"
+ALT_SCREEN_OFF = "\033[?1049l"
+
+# Cursor Home: moves to the top-left corner. Being an absolute move,
+# it needs no line counting and cannot drift, unlike Cursor Up.
+CURSOR_HOME = "\033[H"
+
+# Hiding the cursor while redrawing stops it from flickering across
+# the frame as it is being painted.
+CURSOR_HIDE = "\033[?25l"
+CURSOR_SHOW = "\033[?25h"
+
+# Redrawing in place overwrites, it does not clear: a line shorter
+# than the one it replaces would leave the tail of the old one behind.
+# ERASE_LINE wipes from the cursor to the end of its line, ERASE_BELOW
+# from the cursor to the bottom of the screen.
+ERASE_LINE = "\033[K"
+ERASE_BELOW = "\033[J"
+
 # Solid block: walls, pattern and path are all drawn with it, only
 # the colour telling them apart.
 BLOCK = "█"
@@ -135,6 +157,38 @@ def render_corner(grid: list[list[Dictype]]) -> list[list[bool]]:
     return corners
 
 
+def all_logo(
+    grid: list[list[Dictype]],
+    cells: tuple[tuple[int, int], ...],
+) -> bool:
+    """Tells whether every listed cell belongs to the "42" pattern.
+
+    A character on screen is rarely owned by a single cell: a wall is
+    shared by two, a corner post by four. Such a character may only
+    take the pattern's colour when every cell touching it belongs to
+    the pattern, which is what keeps the colour strictly inside the
+    drawing rather than bleeding into the maze around it.
+
+    A cell falling outside the grid counts as not belonging to the
+    pattern, so the outer border is never painted with its colour.
+
+    Args:
+        grid: The maze grid.
+        cells: The cells touching one character, as `(y, x)` pairs.
+
+    Returns:
+        True if all of them exist and carry the pattern.
+    """
+    height = len(grid)
+    width = len(grid[0])
+    for y, x in cells:
+        if not (0 <= y < height and 0 <= x < width):
+            return False
+        if not grid[y][x]["logo"]:
+            return False
+    return True
+
+
 def can_you_see_me(
     maze: MazeGenerator,
     corners: list[list[bool]],
@@ -156,12 +210,15 @@ def can_you_see_me(
     than the single step the open wall offers, and the path would not
     be the shortest one.
 
-    A corner post is a point shared by up to four cells, never owned by
-    a single one, so it is only ever painted in the wall's colour, the
-    same way it would be for any ordinary wall junction. Only a cell's
-    own two characters ever take the pattern's colour, which is what
-    keeps that colour confined to the cells that actually belong to
-    the "42" pattern.
+    The "42" pattern is coloured by asking `all_logo()` about every
+    character, and not by letting each cell paint the walls it happens
+    to own. A wall is shared by two cells and a corner post by four, so
+    letting one of them decide alone left the pattern striped with wall
+    colour and lopsided, coloured on two sides and not on the other
+    two. Requiring every cell touching a character to belong to the
+    pattern fills its inside evenly and leaves its outline in the
+    wall's colour, which draws a clean rim around the drawing and keeps
+    it exactly the size it was designed to be.
 
     Args:
         maze: The generated maze.
@@ -175,7 +232,10 @@ def can_you_see_me(
 
     def corner(r: int, c: int) -> str:
         """Picks the colour of a single corner post."""
-        return wall_block if corners[r][c] else " "
+        if not corners[r][c]:
+            return " "
+        touching = ((r - 1, c - 1), (r - 1, c), (r, c - 1), (r, c))
+        return logo_block if all_logo(grid, touching) else wall_block
 
     line = ""
     for c, cell in enumerate(grid[0]):
@@ -191,10 +251,10 @@ def can_you_see_me(
                 floor += colors("X", theme["entry"])
             elif (row_idx, c) == maze.exit:
                 floor += colors("X", theme["exit"])
-            elif cell["logo"]:
-                floor += logo_block
             elif cell["wall"] & W:
-                floor += wall_block
+                touching = ((row_idx, c - 1), (row_idx, c))
+                floor += (logo_block if all_logo(grid, touching)
+                          else wall_block)
             elif cell["path"]:
                 floor += colors(BLOCK, theme["path"])
             else:
@@ -213,10 +273,10 @@ def can_you_see_me(
         for c, cell in enumerate(row):
             wall += corner(r, c)
             below_on_path = r < len(grid) and grid[r][c]["path"]
-            if cell["logo"]:
-                wall += logo_block
-            elif cell["wall"] & S:
-                wall += wall_block
+            if cell["wall"] & S:
+                touching = ((row_idx, c), (row_idx + 1, c))
+                wall += (logo_block if all_logo(grid, touching)
+                         else wall_block)
             elif cell["path"] and below_on_path:
                 wall += colors(BLOCK, theme["path"])
             else:
@@ -271,6 +331,36 @@ def mark_path(maze: MazeGenerator, shown: bool) -> None:
         maze.grid[y][x]["path"] = shown
 
 
+def draw_screen(
+    maze: MazeGenerator,
+    corners: list[list[bool]],
+    theme: dict[str, str],
+    status: str,
+) -> None:
+    """Redraws the whole screen in place, from its top-left corner.
+
+    Sending the cursor home before printing is what turns a stream of
+    lines into a screen: every frame lands on the very same rows, so
+    the maze, the status line and the menu are refreshed where they
+    already sit instead of being appended below their previous copy.
+
+    Printing overwrites but never clears, so two erasures are needed:
+    one on the status line, the only one whose length varies, and one
+    below the menu, which wipes the answer typed on the previous turn.
+
+    Args:
+        maze: The maze to display.
+        corners: The corner table from `render_corner()`.
+        theme: The colours to paint with.
+        status: One-line message shown between the maze and the menu.
+    """
+    print(CURSOR_HOME, end="")
+    can_you_see_me(maze, corners, theme)
+    print(f"{status}{ERASE_LINE}")
+    print(MENU)
+    print(ERASE_BELOW, end="")
+
+
 def animate_path(
     maze: MazeGenerator,
     corners: list[list[bool]],
@@ -278,22 +368,30 @@ def animate_path(
 ) -> None:
     """Reveals the solution path one cell at a time, exit to entry.
 
-    Lights up a single cell, redraws the whole maze, then waits one
-    frame before moving to the next cell. The cursor is walked back up
-    over the maze between each frame, so every redraw overwrites the
-    previous one in place rather than scrolling the terminal.
+    Lights up a single cell, redraws the whole screen, then waits one
+    frame before moving to the next cell. The alternate screen is
+    already open, `main()` having entered it for the whole run, so the
+    reveal is an ordinary sequence of redraws: the menu keeps its place
+    below the maze throughout.
+
+    Only the cursor is dealt with here, hidden for the duration so it
+    does not flicker across each frame as it is being painted, and
+    shown again whatever happens, Ctrl-C included.
 
     Args:
         maze: The solved maze.
         corners: The corner table from `render_corner()`.
         theme: The colours to paint with.
     """
-    for y, x in reversed(maze.solved()):
-        maze.grid[y][x]["path"] = True
-        print(f"\033[{2 * maze.height + 1}A", end="")
-        can_you_see_me(maze, corners, theme)
-        sys.stdout.flush()
-        time.sleep(ANIMATION_DELAY)
+    print(CURSOR_HIDE, end="")
+    try:
+        for y, x in reversed(maze.solved()):
+            maze.grid[y][x]["path"] = True
+            draw_screen(maze, corners, theme, "Revealing the path...")
+            sys.stdout.flush()
+            time.sleep(ANIMATION_DELAY)
+    finally:
+        print(CURSOR_SHOW, end="")
 
 
 def new_maze(config: MazeConfig) -> MazeGenerator:
@@ -323,13 +421,16 @@ def new_maze(config: MazeConfig) -> MazeGenerator:
 
 
 def ask_choice() -> int:
-    """Prints the menu and reads the user's pick.
+    """Reads the user's pick.
+
+    The menu is no longer printed here: it belongs to the screen
+    `draw_screen()` paints, redrawn in place along with the maze, so
+    this only has to read the answer.
 
     Returns:
         The number picked, or 4 to quit when the input stream closes.
         Anything unreadable returns 0, which no entry matches.
     """
-    print(MENU)
     try:
         return int(input("Choice? (1-4): "))
     except ValueError:
@@ -355,36 +456,60 @@ def main() -> None:
     theme = THEMES[theme_idx]
     path_shown = False
     corners = render_corner(maze.grid)
-    can_you_see_me(maze, corners, theme)
-    print(f"Maze written to '{config.output_file}'.")
+    status = f"Maze written to '{config.output_file}'."
 
-    while True:
-        choice = ask_choice()
-        try:
-            match choice:
-                case 1:
-                    maze = new_maze(config)
-                    path_shown = False
-                    corners = render_corner(maze.grid)
-                case 2:
-                    path_shown = not path_shown
-                    if path_shown:
-                        animate_path(maze, corners, theme)
-                    else:
-                        mark_path(maze, False)
-                case 3:
-                    theme_idx = (theme_idx + 1) % len(THEMES)
-                    theme = THEMES[theme_idx]
-                case 4:
-                    return
-                case _:
-                    print("Please pick a number between 1 and 4.")
-                    continue
-        except (MazeError, ValueError) as err:
-            print(f"Error: {err}")
-            continue
-        can_you_see_me(maze, corners, theme)
+    # The alternate screen is entered only now, once the configuration
+    # has been read and the maze built: an error raised above must stay
+    # readable on the normal screen, which leaving the buffer would
+    # otherwise wipe along with everything else drawn on it.
+    print(ALT_SCREEN_ON, end="")
+    try:
+        while True:
+            draw_screen(maze, corners, theme, status)
+            choice = ask_choice()
+            try:
+                match choice:
+                    case 1:
+                        maze = new_maze(config)
+                        path_shown = False
+                        corners = render_corner(maze.grid)
+                        status = f"Maze written to '{config.output_file}'."
+                    case 2:
+                        path_shown = not path_shown
+                        if path_shown:
+                            animate_path(maze, corners, theme)
+                            status = "Shortest path shown."
+                        else:
+                            mark_path(maze, False)
+                            status = "Shortest path hidden."
+                    case 3:
+                        theme_idx = (theme_idx + 1) % len(THEMES)
+                        theme = THEMES[theme_idx]
+                        status = f"Colours: theme {theme_idx + 1}."
+                    case 4:
+                        return
+                    case _:
+                        status = "Please pick a number between 1 and 4."
+            except (MazeError, ValueError) as err:
+                status = f"Error: {err}"
+    finally:
+        # Reached by the `return` above, by Ctrl-C, and by any error
+        # left unhandled: the buffer is always given back, so the user
+        # never lands in a terminal missing its history or its cursor.
+        print(CURSOR_SHOW + ALT_SCREEN_OFF, end="")
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":
-    main()
+    # Ctrl-C is caught here rather than around every call able to run
+    # for a while: a single guard at the entry point covers parsing,
+    # generation, rendering and the path animation alike, and keeps
+    # `main()` free of a concern that is not its own. Whatever was
+    # running has already unwound its own `finally` by the time the
+    # interrupt reaches this point, so the alternate screen is left
+    # and the cursor is back before anything is printed.
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInterrupted.")
+        sys.exit(130)
