@@ -72,7 +72,7 @@ THEME_BLUE = {
 THEME_YELLOW = {
     "wall":  "\033[38;2;218;165;32m",   # goldenrod
     "logo":  "\033[38;2;184;134;11m",   # dark gold
-    "path":  "\033[38;2;255;255;224m",  # pale yellow
+    "path":  "\033[38;2;215;215;214m",  # pale yellow
     "entry": "\033[38;2;50;205;50m",    # lime green
     "exit":  "\033[38;2;220;20;60m",    # crimson
 }
@@ -335,7 +335,6 @@ def draw_screen(
     maze: MazeGenerator,
     corners: list[list[bool]],
     theme: dict[str, str],
-    status: str,
 ) -> None:
     """Redraws the whole screen in place, from its top-left corner.
 
@@ -356,7 +355,6 @@ def draw_screen(
     """
     print(CURSOR_HOME, end="")
     can_you_see_me(maze, corners, theme)
-    print(f"{status}{ERASE_LINE}")
     print(MENU)
     print(ERASE_BELOW, end="")
 
@@ -387,7 +385,7 @@ def animate_path(
     try:
         for y, x in reversed(maze.solved()):
             maze.grid[y][x]["path"] = True
-            draw_screen(maze, corners, theme, "Revealing the path...")
+            draw_screen(maze, corners, theme)
             sys.stdout.flush()
             time.sleep(ANIMATION_DELAY)
     finally:
@@ -465,7 +463,7 @@ def main() -> None:
     print(ALT_SCREEN_ON, end="")
     try:
         while True:
-            draw_screen(maze, corners, theme, status)
+            draw_screen(maze, corners, theme)
             choice = ask_choice()
             try:
                 match choice:

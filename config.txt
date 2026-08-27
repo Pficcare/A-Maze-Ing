@@ -6,16 +6,16 @@
 # --- Required keys (subject IV.3) ---
 
 # Maze width, in cells (X axis, columns)
-WIDTH=38
+WIDTH=60
 
 # Maze height, in cells (Y axis, rows)
-HEIGHT=28
+HEIGHT=30
 
 # Entry coordinates, as x,y (x < WIDTH, y < HEIGHT)
 ENTRY=0,0
 
 # Exit coordinates, as x,y (must differ from ENTRY)
-EXIT=36,26
+EXIT=58,28
 
 # Output file name (hexadecimal wall representation)
 OUTPUT_FILE=maze.txt
