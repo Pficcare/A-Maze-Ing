@@ -77,7 +77,15 @@ THEME_YELLOW = {
     "exit":  "\033[38;2;220;20;60m",    # crimson
 }
 
-THEMES = [THEME_RED, THEME_GREEN, THEME_BLUE, THEME_YELLOW]
+THEME_BLACK = {
+    "wall":  "\033[38;2;0;0;0m",   # black
+    "logo":  "\033[38;2;184;134;11m",   # dark gold
+    "path":  "\033[38;2;255;255;255m",  # white
+    "entry": "\033[38;2;50;205;50m",    # lime green
+    "exit":  "\033[38;2;220;20;60m",    # crimson
+}
+
+THEMES = [THEME_BLACK, THEME_RED, THEME_GREEN, THEME_BLUE, THEME_YELLOW]
 
 MENU = """
 === A-Maze-ing ===
@@ -420,10 +428,6 @@ def new_maze(config: MazeConfig) -> MazeGenerator:
 
 def ask_choice() -> int:
     """Reads the user's pick.
-
-    The menu is no longer printed here: it belongs to the screen
-    `draw_screen()` paints, redrawn in place along with the maze, so
-    this only has to read the answer.
 
     Returns:
         The number picked, or 4 to quit when the input stream closes.
