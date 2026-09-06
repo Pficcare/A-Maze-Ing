@@ -258,9 +258,28 @@ path links the entry to the exit.
 
 ### Packaging
 
-The module is distributed as a `mazegen-*` package, buildable from the
-sources in this repository. See `LICENSE.md` for the terms under which
-it may be reused.
+The module is distributed as a `mazegen-*` package, built from
+`mazegen.py` and the `pyproject.toml` at the root of this repository,
+with `build` (already listed in `requirements.txt`):
+
+```bash
+python3 -m build
+```
+
+This produces two files under `dist/`, both committed at the repository
+root as the subject requires:
+
+- `mazegen-1.0.0-py3-none-any.whl` — the wheel, installed by `pip` first.
+- `mazegen-1.0.0.tar.gz` — the source distribution, the fallback.
+
+Installing either one gives `from mazegen import MazeGenerator` with no
+other file from this repository needed:
+
+```bash
+pip install mazegen-1.0.0-py3-none-any.whl
+```
+
+See `LICENSE.md` for the terms under which the module may be reused.
 
 ## Output file format
 
