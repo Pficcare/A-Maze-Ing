@@ -139,9 +139,8 @@ def to_bool(key: str, raw: str) -> bool:
 def to_cell(key: str, raw: str) -> tuple[int, int]:
     """Converts an 'x,y' coordinate into an internal `(y, x)` pair.
 
-    The subject writes coordinates as `(x, y)` while the grid is
-    indexed `grid[y][x]`. The swap happens here, once and for all, so
-    that the rest of the program only ever knows one convention.
+    The swap happens here, once and for all, so the rest of the
+    program only ever knows the `(y, x)` grid convention.
 
     Args:
         key: Name of the key, used in the error message.
@@ -165,11 +164,9 @@ def to_cell(key: str, raw: str) -> tuple[int, int]:
 def validate(config: MazeConfig) -> None:
     """Checks that the configuration describes a workable maze.
 
-    Applies the three rules the subject states (IV.4) about entry and
-    exit: they exist, they differ, and they fit inside the grid. No
-    constraint on sitting along the border: entry and exit do not
-    pierce the outer wall, they are plain cells that happen to be
-    marked.
+    Applies the subject's rules (IV.4) about entry and exit: they
+    exist, they differ, and they fit inside the grid. They stay plain
+    cells and never pierce the outer wall.
 
     Args:
         config: Converted configuration, not validated yet.

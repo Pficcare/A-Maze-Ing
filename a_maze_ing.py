@@ -113,11 +113,8 @@ def colors(txt: str, color: str) -> str:
 def render_corner(grid: list[list[Dictype]]) -> list[list[bool]]:
     """Works out which wall corners have to be filled in.
 
-    A corner sits where four cells meet, so the display owns one more
-    corner than it owns cells on each axis. It is filled as soon as at
-    least one of the walls touching it is closed, which is what makes
-    neighbouring walls read as one continuous line rather than as a
-    row of separate blocks.
+    A corner is painted as soon as one of its four touching walls is
+    closed, so neighbouring walls read as one continuous line.
 
     Args:
         grid: The maze grid.
@@ -171,14 +168,10 @@ def all_logo(
 ) -> bool:
     """Tells whether every listed cell belongs to the "42" pattern.
 
-    A character on screen is rarely owned by a single cell: a wall is
-    shared by two, a corner post by four. Such a character may only
-    take the pattern's colour when every cell touching it belongs to
-    the pattern, which is what keeps the colour strictly inside the
-    drawing rather than bleeding into the maze around it.
-
-    A cell falling outside the grid counts as not belonging to the
-    pattern, so the outer border is never painted with its colour.
+    A wall or corner is shared by several cells, so it only takes the
+    pattern's colour when all of them belong to it, keeping the colour
+    from bleeding into the maze around it. A cell outside the grid
+    never counts as part of the pattern.
 
     Args:
         grid: The maze grid.
@@ -204,29 +197,11 @@ def can_you_see_me(
 ) -> None:
     """Prints the maze to the console, line by line.
 
-    Every cell takes two characters wide and two lines tall, so that
-    the walls it shares with its neighbours have somewhere to be drawn.
-    Cell contents are ranked: entry and exit first, then the "42"
-    pattern, then walls, and only then the solution path. Walls
-    outrank the path on purpose, so that showing the path never hides
-    a wall the display is meant to make clear.
-
-    The path is painted on the joints between cells too, otherwise it
-    would read as a dotted line rather than as a corridor. Two cells
-    parted by an open wall and both sitting on the path are always
-    linked by it: were they not, the walk between them would be longer
-    than the single step the open wall offers, and the path would not
-    be the shortest one.
-
-    The "42" pattern is coloured by asking `all_logo()` about every
-    character, and not by letting each cell paint the walls it happens
-    to own. A wall is shared by two cells and a corner post by four, so
-    letting one of them decide alone left the pattern striped with wall
-    colour and lopsided, coloured on two sides and not on the other
-    two. Requiring every cell touching a character to belong to the
-    pattern fills its inside evenly and leaves its outline in the
-    wall's colour, which draws a clean rim around the drawing and keeps
-    it exactly the size it was designed to be.
+    Each cell is 2 characters wide and 2 lines tall, room enough for
+    its shared walls. Drawing priority: entry/exit, then the "42"
+    pattern, then walls, then the path, so the path never hides a
+    wall. The path is also painted on open joints so it reads as a
+    corridor rather than a dotted line.
 
     Args:
         maze: The generated maze.
@@ -296,12 +271,10 @@ def can_you_see_me(
 def write_maze_file(maze: MazeGenerator, path: str) -> None:
     """Writes the maze to the output file (subject IV.5).
 
-    One hexadecimal digit per cell, one row per line. After a blank
-    line come three more lines: the entry coordinates, the exit
-    coordinates, and the shortest path spelled with N, E, S and W.
-    Coordinates are written back as `x,y`, the form the subject uses,
-    which is the mirror of the swap the config parser applies on the
-    way in.
+    One hex digit per cell, one row per line, then a blank line and
+    three more: entry, exit, and the shortest path spelled N/E/S/W.
+    Coordinates are written back as `x,y`, mirroring the config
+    parser's swap on the way in.
 
     Args:
         maze: The generated maze.
@@ -346,20 +319,14 @@ def draw_screen(
 ) -> None:
     """Redraws the whole screen in place, from its top-left corner.
 
-    Sending the cursor home before printing is what turns a stream of
-    lines into a screen: every frame lands on the very same rows, so
-    the maze, the status line and the menu are refreshed where they
-    already sit instead of being appended below their previous copy.
-
-    Printing overwrites but never clears, so two erasures are needed:
-    one on the status line, the only one whose length varies, and one
-    below the menu, which wipes the answer typed on the previous turn.
+    Moving the cursor home first means every frame lands on the same
+    rows instead of piling up below the previous one. `ERASE_BELOW`
+    wipes the answer typed on the previous turn.
 
     Args:
         maze: The maze to display.
         corners: The corner table from `render_corner()`.
         theme: The colours to paint with.
-        status: One-line message shown between the maze and the menu.
     """
     print(CURSOR_HOME, end="")
     can_you_see_me(maze, corners, theme)
@@ -374,15 +341,9 @@ def animate_path(
 ) -> None:
     """Reveals the solution path one cell at a time, exit to entry.
 
-    Lights up a single cell, redraws the whole screen, then waits one
-    frame before moving to the next cell. The alternate screen is
-    already open, `main()` having entered it for the whole run, so the
-    reveal is an ordinary sequence of redraws: the menu keeps its place
-    below the maze throughout.
-
-    Only the cursor is dealt with here, hidden for the duration so it
-    does not flicker across each frame as it is being painted, and
-    shown again whatever happens, Ctrl-C included.
+    Lights up a cell, redraws, waits one frame, repeats. The cursor is
+    hidden for the duration to avoid flicker, and shown again whatever
+    happens, Ctrl-C included.
 
     Args:
         maze: The solved maze.
@@ -458,7 +419,6 @@ def main() -> None:
     theme = THEMES[theme_idx]
     path_shown = False
     corners = render_corner(maze.grid)
-    status = f"Maze written to '{config.output_file}'."
 
     # The alternate screen is entered only now, once the configuration
     # has been read and the maze built: an error raised above must stay
@@ -475,25 +435,21 @@ def main() -> None:
                         maze = new_maze(config)
                         path_shown = False
                         corners = render_corner(maze.grid)
-                        status = f"Maze written to '{config.output_file}'."
                     case 2:
                         path_shown = not path_shown
                         if path_shown:
                             animate_path(maze, corners, theme)
-                            status = "Shortest path shown."
                         else:
                             mark_path(maze, False)
-                            status = "Shortest path hidden."
                     case 3:
                         theme_idx = (theme_idx + 1) % len(THEMES)
                         theme = THEMES[theme_idx]
-                        status = f"Colours: theme {theme_idx + 1}."
                     case 4:
                         return
                     case _:
-                        status = "Please pick a number between 1 and 4."
-            except (MazeError, ValueError) as err:
-                status = f"Error: {err}"
+                        pass
+            except (MazeError, ValueError):
+                pass
     finally:
         # Reached by the `return` above, by Ctrl-C, and by any error
         # left unhandled: the buffer is always given back, so the user

@@ -1,24 +1,3 @@
-#> ===================================================================
-#> HOW A MAKEFILE WORKS  (notes to myself, safe to delete)
-#>
-#> A rule reads:   target: prerequisites
-#>                 <TAB>recipe line
-#> The recipe MUST start with a real tab, never spaces. A space there
-#> is the classic "missing separator" error.
-#>
-#> Run one rule with:  make <target>
-#> Running plain `make` runs the FIRST target of the file, which is
-#> why `help` sits at the top here.
-#>
-#> := assigns once, when the file is read.  = would re-evaluate the
-#> variable every single time it is used.
-#> $(NAME) reads a variable back.
-#>
-#> .PHONY lists targets that are NOT file names. Without it, a file
-#> called "clean" sitting in the folder would make `make clean` say
-#> "nothing to be done": make would think the target is already built.
-#> ===================================================================
-
 #> Interpreter used to CREATE the virtualenv (the system one).
 SYS_PYTHON := python3
 

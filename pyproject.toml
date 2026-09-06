@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mazegen"
+version = "1.0.0"
+description = "Reusable maze generator: grid, '42' pattern, corridor carving and solving."
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+authors = [
+    { name = "Pierre Ficcarelli", email = "pficcare@student.42lisboa.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools]
+py-modules = ["mazegen"]

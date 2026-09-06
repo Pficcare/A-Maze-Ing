@@ -387,13 +387,19 @@ was used for:
 - **Explaining concepts** before implementing them: how a bitmask
   encodes four walls in one digit, why a breadth-first search finds the
   shortest path where a depth-first search does not, what the alternate
-  screen buffer is and why `vim` uses it.
+  screen buffer is and why `vim` uses it. This is the role it played
+  most: a teacher to understand the theory and the *why* behind a
+  choice, not just the *what*, before any line was written.
 - **Diagnosing bugs**, by explaining a mechanism rather than handing
   over a patch. Two examples: the connectivity bug in the first
   generator, where the "give up after N tries" heuristic left
   unreachable cells; and the rendering glitch where each animation
   frame stacked on top of the previous one, which turned out to be
   three separate causes at once.
+- **Advising on style**, once code already worked, to make it cleaner
+  and more idiomatic: shorter docstrings that keep only what a reader
+  needs, or reworking a "pick one, give up on failure" pattern into
+  Python's `random.Random.shuffle` plus a plain loop.
 - **Reviewing** the code for compliance with the subject and with
   `flake8` / `mypy --strict`.
 

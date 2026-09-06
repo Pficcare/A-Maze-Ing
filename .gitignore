@@ -7,4 +7,10 @@ test.py
 maze.txt
 config.txt
 
+# Build scratch left by `python -m build`. The actual deliverable
+# (mazegen-*.whl / .tar.gz) is committed at the repo root, not here.
+dist/
+build/
+*.egg-info/
+
 

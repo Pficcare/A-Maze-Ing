@@ -229,10 +229,8 @@ class MazeGenerator:
     def scale_logo(self) -> int:
         """Computes the scaling factor of the "42" pattern.
 
-        The pattern grows as long as it fits in the grid and covers no
-        more than `LOGO_RATIO` of its area. Since every pixel becomes a
-        block of side `scale`, the covered area grows as the square of
-        the factor, so the chosen factor moves up in steps.
+        Grows the pattern as long as it fits in the grid and covers no
+        more than `LOGO_RATIO` of its area.
 
         Returns:
             The scaling factor, or 0 when even the unscaled pattern
@@ -258,16 +256,12 @@ class MazeGenerator:
     def i_m_logo(self) -> None:
         """Draws the "42" pattern at the centre of the grid.
 
-        Every pixel of the pattern becomes a block of `scale` cells
-        marked as visited, so that carving walks around them instead of
-        going through. Entry and exit cells are spared: covering either
-        one would make it unreachable and `solved()` would fail. The
-        rare cost is a single-cell notch in an otherwise solid block,
-        should entry or exit happen to fall inside the pattern.
+        Every pixel becomes a block of `scale` cells marked as
+        visited, so carving walks around them. Entry and exit cells
+        are spared even if that means a notch in the pattern.
 
-        When the grid is too small to hold the pattern, a message is
-        printed on the console, as the subject requires, and
-        `logo_drawn` stays False.
+        Prints a message and leaves `logo_drawn` False when the grid
+        is too small to hold it (as the subject requires).
         """
         scale = self.scale_logo()
         if scale == 0:
@@ -324,15 +318,10 @@ class MazeGenerator:
     def the_architect(self) -> None:
         """Carves the corridors with a depth-first walk.
 
-        Starts from the entry and moves to a randomly picked untouched
-        neighbour, opening the shared wall on both sides. Once the
-        current cell has no untouched neighbour left, the walk steps
-        back.
-
-        Free neighbours are computed before every draw, so the stack
-        only pops when nothing is genuinely left to explore. That is
-        what guarantees every cell outside the "42" pattern ends up
-        connected to the rest of the maze.
+        Moves to a randomly picked untouched neighbour, opening the
+        shared wall on both sides, and steps back once none are left.
+        Free neighbours are recomputed before every draw, which is
+        what guarantees full connectivity.
         """
         start_y, start_x = self.entry
         self.grid[start_y][start_x]["visited"] = True
@@ -357,10 +346,8 @@ class MazeGenerator:
         """Lists the directions leading to a real cell through a
         closed wall.
 
-        A closed wall only counts as a candidate for braiding if it
-        actually separates two cells. The permanent walls at the grid's
-        outer border are closed too, but have no cell on their far
-        side, so they are filtered out here rather than in the caller.
+        Filters out the permanent border walls, which are closed too
+        but have no cell on their far side.
 
         Args:
             row: Row of the cell.
@@ -387,42 +374,35 @@ class MazeGenerator:
     def imperfection(self) -> None:
         """Opens one extra way out of every dead-end.
 
-        A cell still holding three closed walls has a single way out:
-        it is a dead-end. Tearing one of its walls down creates a loop,
-        which gives a chased player an alternative route.
-
-        The whole grid is walked, border included: on a small grid,
-        restricting the walk to the interior can leave too few cells to
-        examine, and a maze with no loop at all would slip through
-        (subject IV.4 explicitly forbids that in this mode). A wall
-        facing the "42" pattern is never opened, as that would chip the
-        pattern; a wall facing outside the grid is never a candidate in
-        the first place, since `closed_neighbours()` only returns walls
-        with a real cell on their far side.
+        A cell with three closed walls is a dead-end; tearing one down
+        creates a loop. Walks the whole grid, border included, so a
+        small grid still gets at least one loop (subject IV.4 forbids
+        a plain tree in this mode). Never opens a wall facing the "42"
+        pattern; every closed direction is tried, in random order,
+        before a cell is accepted as a dead-end for good.
         """
         for y in range(self.height):
             for x in range(self.width):
                 if self.grid[y][x]["wall"].bit_count() != 3:
                     continue
                 closed = self.closed_neighbours(y, x)
-                if not closed:
-                    continue
-                direction = self._rng.choice(closed)
-                col_step, row_step = DELTA[direction]
-                next_y = y + row_step
-                next_x = x + col_step
-                if self.grid[next_y][next_x]["logo"]:
-                    continue
-                self.grid[y][x]["wall"] &= ~direction
-                self.grid[next_y][next_x]["wall"] &= ~OPPOSITE[direction]
+                self._rng.shuffle(closed)
+                for direction in closed:
+                    col_step, row_step = DELTA[direction]
+                    next_y = y + row_step
+                    next_x = x + col_step
+                    if self.grid[next_y][next_x]["logo"]:
+                        continue
+                    self.grid[y][x]["wall"] &= ~direction
+                    self.grid[next_y][next_x]["wall"] &= ~OPPOSITE[direction]
+                    break
 
     def you_cannot_hide(self) -> dict[tuple[int, int], tuple[int, int] | None]:
         """Explores the maze breadth-first, starting from the entry.
 
-        Walking cells by growing distance means the first time a cell
-        is reached, it is necessarily along a shortest path. Every cell
-        records where it was reached from, which is what allows the
-        path to be walked back later.
+        Growing distance means a cell's first visit is along a
+        shortest path, so recording where each cell was reached from
+        is enough to walk that path back later.
 
         Returns:
             For each reachable cell, the cell it was reached from. The
@@ -454,11 +434,9 @@ class MazeGenerator:
     def solved(self) -> list[tuple[int, int]]:
         """Walks the shortest path back, from the exit to the entry.
 
-        Reads the map returned by `you_cannot_hide()` backwards: each
-        cell hands over the one it came from, until the entry answers
-        None. The list is then flipped so it reads in walking order.
-
-        The result is cached until the next generation.
+        Reads the map from `you_cannot_hide()` backwards until the
+        entry answers None, then flips the list into walking order.
+        Cached until the next generation.
 
         Returns:
             The cells of the path, ordered from entry to exit, both
@@ -508,10 +486,9 @@ class MazeGenerator:
     def to_hex(self) -> list[str]:
         """Exports the walls as one hexadecimal digit per cell.
 
-        Every cell fits on a single digit, each bit standing for a
-        closed wall, in the order the subject imposes (IV.5): bit 0 for
-        north, 1 for east, 2 for south, 3 for west. That is exactly the
-        encoding already used internally.
+        Each bit is a closed wall, in the order the subject imposes
+        (IV.5): bit 0 north, 1 east, 2 south, 3 west — the encoding
+        already used internally.
 
         Returns:
             One string per grid row.
