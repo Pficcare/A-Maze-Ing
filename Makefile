@@ -1,63 +1,59 @@
-#> Interpreter used to CREATE the virtualenv (the system one).
 SYS_PYTHON := python3
 
-#> Folder holding the virtualenv, and the interpreter inside it.
-#> Everything else runs through it, so the tools are the pinned ones.
-VENV       := venv
+VENV       := .venv
 PYTHON     := $(VENV)/bin/python
+PIP     := $(VENV)/bin/pip
 
-#> Config file passed to the program. Override it from the command
-#> line without editing this file:  make run CONFIG=other.txt
 CONFIG     := config.txt
 
-#> mypy flags the subject imposes for the `lint` rule.
 MYPY_FLAGS := --warn-return-any --warn-unused-ignores \
               --ignore-missing-imports --disallow-untyped-defs \
               --check-untyped-defs
 
-.PHONY: help install run debug clean lint lint-strict
+.PHONY: help install run build debug clean fclean lint lint-strict
 
-#> Lists the available rules. First target, so it is what plain
-#> `make` runs.
 help:
 	@echo "make install      create venv/ and install the dev tools"
 	@echo "make run          generate and display a maze"
+	@echo "make build        build the wheel file"
 	@echo "make debug        same, under the pdb debugger"
 	@echo "make lint         flake8 + mypy with the required flags"
 	@echo "make lint-strict  flake8 + mypy --strict"
 	@echo "make clean        remove caches"
+	@echo "make fclean       remove caches and venv"
 
-#> Creates the virtualenv if missing, then installs the dev tools in
-#> it. A venv is needed because this system marks its Python as
-#> externally managed (PEP 668), so a global pip install is refused.
-#> `test -d ... ||` means "unless the folder is already there".
-install:
-	test -d $(VENV) || $(SYS_PYTHON) -m venv $(VENV)
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -r requirements.txt
 
-#> Runs the program on the config file.
-run:
+install: $(VENV)/bin/activate
+
+$(VENV)/bin/activate: requirements.txt
+	@printf 'Creating venv...\n'
+	$(SYS_PYTHON) -m venv $(VENV)
+	@printf 'Installing dependencies...\n'
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
+	@printf '\n\033[32mActivate venv with \033[34msource $(VENV)/bin/activate\033[0m\n'
+
+run: install
 	$(PYTHON) a_maze_ing.py $(CONFIG)
 
-#> Same, under the built-in debugger. pdb stops on the first line and
-#> waits: `n` steps, `c` continues, `q` quits, `b 42` breaks on a line.
-debug:
+build: install
+	$(PYTHON) -m build --wheel --outdir .
+
+debug: install
 	$(PYTHON) -m pdb a_maze_ing.py $(CONFIG)
 
-#> Deletes what the interpreter and mypy cache. Never touches venv/
-#> nor any source file.
 clean:
-	rm -rf __pycache__ .mypy_cache
-	rm -f .coverage
+	find . \( -name "__pycache__" -o -name ".mypy_cache" -o -name "*.egg-info" -o -name ".pytest_cache" \) -type d -exec rm -rf {} +
+	rm -rf build/ dist/
+	rm -f maze.txt
 
-#> The two checks the subject requires. flake8 reads its exclusions
-#> from setup.cfg, which is why plain `.` is enough here.
-lint:
+fclean: clean
+	rm -rf $(VENV)
+
+lint: install
 	$(PYTHON) -m flake8 .
 	$(PYTHON) -m mypy . $(MYPY_FLAGS)
 
-#> Same, with every optional strictness turned on.
-lint-strict:
+lint-strict: install
 	$(PYTHON) -m flake8 .
 	$(PYTHON) -m mypy . --strict
