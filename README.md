@@ -1,5 +1,7 @@
 *This project has been created as part of the 42 curriculum by pficcare.*
 
+[mazegen readme](./mazegen/README.md)
+
 # A-Maze-ing
 
 ## Description
@@ -12,10 +14,10 @@ and displays it in the terminal with a small interactive menu.
 Two kinds of maze can be produced, depending on a single flag in the
 configuration file:
 
-- **Perfect maze** (`PERFECT=True`) — exactly one path links the entry
+- **Perfect maze** (`PERFECT=True`)  exactly one path links the entry
   to the exit. No loop anywhere. The maze is a spanning tree of the
   grid.
-- **Playable board** (`PERFECT=False`, the default) — the same maze,
+- **Playable board** (`PERFECT=False`, the default) the same maze,
   with extra walls torn down so that several independent routes exist.
   This is the shape a Pac-Man-like game needs: a chased player must
   always have an alternative.
@@ -25,8 +27,7 @@ cells and scaled to the grid size. It is skipped, with a message on the
 console, when the grid is too small to hold it.
 
 The generation logic lives in its own module, `mazegen.py`, with no
-display code in it, so that a later project — a graphical one, for
-instance — can import it and ignore everything about terminals.
+display code in it, so that a later project can import it.
 
 ## Instructions
 
@@ -42,7 +43,7 @@ python3 a_maze_ing.py config.txt
 ```
 
 `config.txt` is the only argument. Any other file name works.
-
+z
 The Makefile wraps the usual tasks:
 
 | Command | What it does |
@@ -62,11 +63,11 @@ marks its Python as externally managed (PEP 668), which makes a global
 
 Once the maze is displayed, a menu offers:
 
-1. **Re-generate a new maze** — draws a different one from the same
+1. **Re-generate a new maze** Draws a different one from the same
    configuration (unless `SEED` is set, which pins the result).
-2. **Show / Hide the shortest path** — reveals the solution one cell at
+2. **Show / Hide the shortest path** Reveals the solution one cell at
    a time, from the exit back to the entry.
-3. **Rotate the wall colours** — cycles through four colour themes.
+3. **Rotate the wall colours** Cycles through four colour themes.
 4. **Quit**.
 
 ## Configuration file format
@@ -132,7 +133,7 @@ walk starts. Being already visited, they are never chosen as a
 neighbour, so the walk carves around them and leaves them fully closed.
 
 When `PERFECT=False`, a second pass (`imperfection()`) walks the grid
-looking for dead-ends — cells still holding three closed walls — and
+looking for dead-ends cells still holding three closed walls and
 opens one more wall on each. Every wall opened creates a loop, which is
 what turns the single-path maze into a board with alternative routes.
 
@@ -141,7 +142,7 @@ what turns the single-path maze into a board with alternative routes.
 - **It is a perfect maze by construction.** The walk only ever carves
   into a cell it has not visited, so it can never close a loop. The
   result is a spanning tree of the grid: one path between any two
-  cells, exactly what `PERFECT=True` requires — with no verification
+  cells, exactly what `PERFECT=True` requires with no verification
   pass needed afterwards.
 - **Full connectivity is free.** The walk backtracks instead of giving
   up, so it does not stop until every reachable cell has been visited.
@@ -151,7 +152,7 @@ what turns the single-path maze into a board with alternative routes.
 - **It needs no heavy data structure.** A stack and a `visited` flag
   per cell. Prim's and Kruskal's algorithms, the two classic
   alternatives, need a priority queue and a union-find structure
-  respectively — more machinery for a result that is no better here.
+  respectively more machinery for a result that is no better here.
 - **It produces the nicest mazes to look at.** Depth-first search
   favours long winding corridors, where Prim's tends to produce short
   branches spreading out from the start. Since the maze is meant to be
@@ -203,7 +204,7 @@ Only `width` and `height` are required. Passing the same `seed` twice
 gives the very same maze, which is how reproducibility is guaranteed.
 
 Note that `entry` and `exit` are given as `(y, x)` here, the internal
-convention — not as `x,y` like in the configuration file.
+convention not as `x,y` like in the configuration file.
 
 `ValueError` is raised if the grid is smaller than 3×3, or if entry and
 exit are equal or fall outside the grid.
@@ -215,12 +216,12 @@ a dictionary:
 
 ```python
 >>> maze.grid[0][0]
-{'wall': 11, 'visited': True, 'color': [0, 0, 0], 'logo': False, 'path': False}
+{'wall': 15, 'visited': True, 'color': [0, 0, 0], 'logo': False, 'path': False}
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `wall` | bitmask of the closed walls: `N=1`, `E=2`, `S=4`, `W=8`. `11` is `1011`, so north, east and west are closed |
+| `wall` | bitmask of the closed walls: `N=1`, `E=2`, `S=4`, `W=8`. `15` is `1111`, so north, south, east and west are closed |
 | `visited` | used by the generation walk |
 | `color` | `[r, g, b]`, left to the caller to use |
 | `logo` | `True` if the cell belongs to the "42" pattern |
@@ -231,7 +232,7 @@ Useful attributes: `maze.width`, `maze.height`, `maze.entry`,
 is `False` when the pattern had to be skipped for lack of room.
 
 `maze.to_hex()` returns the same walls as one hexadecimal digit per
-cell, one string per row — the format the output file uses:
+cell, one string per row the format the output file uses:
 
 ```python
 >>> maze.to_hex()
@@ -269,8 +270,8 @@ python3 -m build
 This produces two files under `dist/`, both committed at the repository
 root as the subject requires:
 
-- `mazegen-1.0.0-py3-none-any.whl` — the wheel, installed by `pip` first.
-- `mazegen-1.0.0.tar.gz` — the source distribution, the fallback.
+- `mazegen-1.0.0-py3-none-any.whl` The wheel, installed by `pip` first.
+- `mazegen-1.0.0.tar.gz` The source distribution, the fallback.
 
 Installing either one gives `from mazegen import MazeGenerator` with no
 other file from this repository needed:
