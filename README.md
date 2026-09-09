@@ -259,22 +259,23 @@ path links the entry to the exit.
 
 ### Packaging
 
-The module is distributed as a `mazegen-*` package, built from
-`mazegen.py` and the `pyproject.toml` at the root of this repository,
-with `build` (already listed in `requirements.txt`):
+The module is distributed as a `mazegen-*` package, built from the
+`mazegen/` package and the `pyproject.toml` at the root of this
+repository, with `build` (already listed in `requirements.txt`),
+wrapped by `make build`:
 
 ```bash
-python3 -m build
+python3 -m build --wheel --outdir .
 ```
 
-This produces two files under `dist/`, both committed at the repository
-root as the subject requires:
+This produces `mazegen-1.0.0-py3-none-any.whl` directly at the root of
+this repository, committed as the subject requires. Being pure Python
+with no compiled extension, the wheel alone covers every platform, so
+the source distribution (`.tar.gz`) the subject also allows is not
+needed here.
 
-- `mazegen-1.0.0-py3-none-any.whl` The wheel, installed by `pip` first.
-- `mazegen-1.0.0.tar.gz` The source distribution, the fallback.
-
-Installing either one gives `from mazegen import MazeGenerator` with no
-other file from this repository needed:
+Installing it gives `from mazegen import MazeGenerator` with no other
+file from this repository needed:
 
 ```bash
 pip install mazegen-1.0.0-py3-none-any.whl
@@ -396,12 +397,9 @@ here.
 
 ### How AI was used
 
-<!-- TODO pficcare: check this section says what you actually did, and
-     be ready to defend every line of it during the evaluation. -->
-
 AI (Claude) was used as a **tutor, not as a code generator**. The
 working rule, set from the start, was: explain the reasoning, offer two
-or three approaches, and let me pick and write the code. Concretely, it
+or three approaches. Concretely, it
 was used for:
 
 - **Explaining concepts** before implementing them: how a bitmask
@@ -420,8 +418,6 @@ was used for:
   and more idiomatic: shorter docstrings that keep only what a reader
   needs, or reworking a "pick one, give up on failure" pattern into
   Python's `random.Random.shuffle` plus a plain loop.
-- **Reviewing** the code for compliance with the subject and with
-  `flake8` / `mypy --strict`.
 
 It was **not** used to write the generation algorithm, the solver, or
 the rendering logic, all of which were written by hand and can be
@@ -429,30 +425,56 @@ explained line by line.
 
 ## Team and project management
 
-<!-- TODO pficcare: this section is yours to write — nobody else can.
-     The subject (chapter VII) asks explicitly for the four points
-     below. Replace each placeholder with what actually happened. -->
-
 ### Roles
 
-Solo project. TODO: state what you took charge of.
+Leonid role was to implement the generation algorithm (the recursive-backtracker carving
+and the braiding pass for the playable board), the BFS solver.
+
+Pierre role was to implement the ANSI rendering, logoc scalling logic, menu loop, and the
+`mazegen` packaging.
+
+We them both worked on the parsing and validation logic.
 
 ### Planning, and how it evolved
 
-TODO: what you had planned at the start, in what order, and what
-actually happened — what took longer than expected, what had to be
-rewritten, what was dropped.
+The plan was to get the generation algorithm right first, in a
+throwaway procedural prototype (`grid_test.py`), then split it into the
+three modules the subject's chapters ask for once it actually worked:
+`mazegen.py` for the reusable generator, `config_parser.py` for the
+configuration file, `a_maze_ing.py` as the entry point.
+
+What took longer than planned was debugging two separate issues deep
+enough to require rewriting the logic rather than patching it (see
+below) — that pushed the terminal rendering and the README past the
+point where they were comfortably finished before the deadline.
 
 ### What worked well, what could be improved
 
-TODO. Two candidates from the history of this project, worth writing up
-because they are real: splitting the prototype into three modules
-(`mazegen.py`, `config_parser.py`, `a_maze_ing.py`) made everything
-afterwards easier; and the first generation algorithm had to be
-rewritten once a test showed it left unreachable cells in 198 runs out
-of 200.
+Splitting the prototype into three modules early made every later
+change (the config file, the packaging, the rendering) easier to
+isolate and test on its own.
+
+Two real difficulties, both design problems rather than simple bugs:
+
+- **Reaching zero dead-ends.** The pass that opens an extra wall on
+  each dead-end (`imperfection()`) only walked the interior of the
+  grid at first, skipping the border to avoid a bounds-check on every
+  cell. That left border dead-ends (roughly a tenth of all cells)
+  untouched, and on small grids it sometimes opened no wall at all,
+  producing a plain tree — exactly what `PERFECT=False` forbids. The
+  fix was a `closed_neighbours()` helper that checks the bounds per
+  *direction* instead of per cell, which let the pass walk the whole
+  grid, border included, without ever touching the permanent outer
+  wall.
+- **Rendering across different terminals.** Repainting each frame by
+  printing over the previous one behaved differently depending on the
+  terminal: frames could stack or scroll instead of refreshing in
+  place. The fix was to draw inside the terminal's alternate screen
+  buffer — the same mechanism `vim`, `less` and `htop` use — so each
+  refresh always repaints a single stable screen instead of depending
+  on how a given terminal handles repeated output.
 
 ### Tools
 
-TODO. Candidates: Git, `flake8`, `mypy`, `make`, a virtual environment,
-`pdb`, and Claude as described above.
+Git, `flake8`, `mypy --strict`, `make`, a virtual environment, `pdb`,
+and Claude as described above.
