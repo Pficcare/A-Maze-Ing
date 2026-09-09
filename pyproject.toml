@@ -18,4 +18,4 @@ classifiers = [
 ]
 
 [tool.setuptools]
-py-modules = ["mazegen"]
+packages = ["mazegen"]
