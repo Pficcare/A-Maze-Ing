@@ -1,4 +1,5 @@
 .venv/
+venv/
 __pycache__/
 CLAUDE.md
 en.subject.pdf
